@@ -1,42 +1,33 @@
-name: Terraform CI/CD for Azure
+trigger:
+- main
 
-# Trigger workflow on push to main branch
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:  # Allows manual trigger
+pool:
+  vmImage: 'ubuntu-latest'
 
-jobs:
-  terraform:
-    name: Terraform Apply
-    runs-on: ubuntu-latest
+steps:
+- task: TerraformInstaller@1
+  inputs:
+    terraformVersion: '1.6.0'
 
-    steps:
-      # Step 1: Checkout the code
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+- task: TerraformTaskV4@1
+  inputs:
+    provider: 'azurerm'
+    command: 'init'
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+    backendServiceArm: '<your-service-connection>'
+    ensureBackend: true
 
-      # Step 2: Set up Terraform
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.6.0
+- task: TerraformTaskV4@1
+  inputs:
+    provider: 'azurerm'
+    command: 'plan'
+    environmentServiceNameAzureRM: '<your-service-connection>'
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
 
-      # Step 3: Azure Login
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # Step 4: Terraform Init
-      - name: Terraform Init
-        run: terraform init
-
-      # Step 5: Terraform Plan
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan
-
-      # Step 6: Terraform Apply
-      - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+- task: TerraformTaskV4@1
+  inputs:
+    provider: 'azurerm'
+    command: 'apply'
+    environmentServiceNameAzureRM: '<your-service-connection>'
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+    args: '-auto-approve'
